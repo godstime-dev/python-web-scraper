@@ -1,4 +1,4 @@
-# Web Scraper Python
+# Python Web Scraper
 
 A Python web scraping tool that extracts structured data from websites and exports it into clean CSV format.
 
