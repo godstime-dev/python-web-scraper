@@ -1,20 +1,18 @@
 # Web Scraper Python
 
-A simple Python web scraping tool that extracts data from websites and saves it into a CSV file.
+A Python web scraping tool that extracts structured data from websites and exports it into clean CSV format.
 
 ---
 
 ## 🚀 Features
-- Scrapes data from any website URL
-- Extracts text-based content
-- Saves output into CSV format
-- Handles basic errors
+- Scrapes data from websites using a URL
+- Extracts structured text content
+- Exports results into CSV format
+- Handles basic request errors
 
 ---
 
 ## ⚙️ Installation
-
-Install required libraries:
 
 ```bash
 pip install -r requirements.txt
