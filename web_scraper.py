@@ -4,9 +4,13 @@ import pandas as pd
 import time
 import re
 
-BASE_URL = "http://books.toscrape.com/catalogue/page-{}.html"
+# CONFIGURATION
+base_url = "http://books.toscrape.com/catalogue/page-{}.html"
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115 Safari/537.36"
+}
+delay = 1.5
 
-# Convert rating text to numeric
 rating_map = {
     "One": 1,
     "Two": 2,
@@ -15,26 +19,104 @@ rating_map = {
     "Five": 5
 }
 
-# Headers
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36"
-}
-
-def scrape_page(url):
+# CORE SCRAPER
+def fetch_page(url):
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        print("Error fetching page:", e)
-        return []
+        return response.text
+    except requests.RequestException as e:
+        print(f"[ERROR] Failed to fetch {url}: {e}")
+        return None
 
-    soup = BeautifulSoup(response.text, "html.parser")
+
+def parse_books(html):
+    soup = BeautifulSoup(html, "html.parser")
     books = soup.find_all("article", class_="product_pod")
 
-    data = []
+    results = []
 
     for book in books:
         try:
+            title = book.h3.a.get("title", "").strip()
+
+            price_text = book.find("p", class_="price_color").text
+            price = float(re.search(r"\d+\.\d+", price_text).group())
+
+            rating_class = book.find("p", class_=re.compile("star-rating")).get("class")
+            rating_word = next((c for c in rating_class if c in rating_map), None)
+            rating = rating_map.get(rating_word, 0)
+
+            results.append({
+                "title": title,
+                "price": price,
+                "rating": rating
+            })
+
+        except Exception as e:
+            print(f"[WARNING] Skipped item: {e}")
+
+    return results
+
+
+# Orchestration
+def scrape_pages(total_pages):
+    all_results = []
+
+    for page in range(1, total_pages + 1):
+        url = base_url.format(page)
+        print(f"[INFO] Scraping page {page}...")
+
+        html = fetch_page(url)
+        if html:
+            books = parse_books(html)
+            all_results.extend(books)
+
+        time.sleep(delay)
+
+    return all_results
+
+
+# EXPORTATION
+def save_to_csv(data, filename="products.csv"):
+    df = pd.DataFrame(data)
+    df.to_csv(filename, index=False, encoding="utf-8")
+    print(f"[SUCCESS] Data saved to {filename}")
+    
+
+def validate_data(data):
+    """Remove invalid or incomplete records."""
+    cleaned = []
+
+    for item in data:
+        if (
+            item.get("title")
+            and isinstance(item.get("price"), (int, float))
+            and isinstance(item.get("rating"), int)
+        ):
+            cleaned.append(item)
+
+    return cleaned
+
+
+# MAIN
+if __name__ == "__main__":
+
+    try:
+        pages = int(input("Enter number of pages to scrape: "))
+        if pages <= 0:
+            raise ValueError
+    except ValueError:
+        print("Invalid input. Using default = 1 page")
+        pages = 1
+
+    data = scrape_pages(pages)
+    data = validate_data(data)
+
+    if data:
+        save_to_csv(data)
+    else:
+        print("[INFO] No valid data scraped.")        try:
             # Title
             title = book.h3.a.get("title", "").strip()
 
